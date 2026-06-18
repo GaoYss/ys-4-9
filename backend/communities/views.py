@@ -85,7 +85,7 @@ class BillViewSet(viewsets.ModelViewSet):
     def pay(self, request, pk=None):
         bill = self.get_object()
         try:
-            payment, prepaid_deduct = pay_bill(
+            payment = pay_bill(
                 bill,
                 request.data.get("method", Payment.WECHAT),
                 request.data.get("payer", ""),
@@ -94,7 +94,6 @@ class BillViewSet(viewsets.ModelViewSet):
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         data = PaymentSerializer(payment).data
-        data["prepaid_deduct"] = str(prepaid_deduct)
         return Response(data, status=status.HTTP_201_CREATED)
 
 
@@ -105,7 +104,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         bill = get_object_or_404(Bill.objects.select_related("room"), pk=request.data.get("bill"))
         try:
-            payment, prepaid_deduct = pay_bill(
+            payment = pay_bill(
                 bill,
                 request.data.get("method", Payment.WECHAT),
                 request.data.get("payer", ""),
@@ -113,9 +112,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
             )
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        data = self.get_serializer(payment).data
-        data["prepaid_deduct"] = str(prepaid_deduct)
-        return Response(data, status=status.HTTP_201_CREATED)
+        return Response(self.get_serializer(payment).data, status=status.HTTP_201_CREATED)
 
 
 class ReminderViewSet(viewsets.ModelViewSet):

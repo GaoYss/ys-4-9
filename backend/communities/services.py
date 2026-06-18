@@ -67,10 +67,13 @@ def pay_bill(bill, method, payer="", use_prepaid=True):
         except PrepaidAccount.DoesNotExist:
             pass
 
+    actual_paid = bill.amount - prepaid_deduct
     payment = Payment.objects.create(
         payment_no=make_number("P"),
         bill=bill,
         amount=bill.amount,
+        prepaid_deduct=prepaid_deduct,
+        actual_paid=actual_paid,
         method=method,
         payer=payer or bill.room.owner_name,
         receipt_no=make_number("R"),
@@ -78,7 +81,7 @@ def pay_bill(bill, method, payer="", use_prepaid=True):
     bill.status = Bill.PAID
     bill.paid_at = payment.paid_at
     bill.save(update_fields=["status", "paid_at"])
-    return payment, prepaid_deduct
+    return payment
 
 
 @transaction.atomic

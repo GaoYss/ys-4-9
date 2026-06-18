@@ -38,6 +38,7 @@ class BillSerializer(serializers.ModelSerializer):
     phone = serializers.CharField(source="room.phone", read_only=True)
     fee_name = serializers.CharField(source="fee_type.name", read_only=True)
     is_overdue = serializers.BooleanField(read_only=True)
+    prepaid_balance = serializers.SerializerMethodField()
 
     class Meta:
         model = Bill
@@ -57,11 +58,18 @@ class BillSerializer(serializers.ModelSerializer):
             "generated_at",
             "paid_at",
             "is_overdue",
+            "prepaid_balance",
         ]
-        read_only_fields = ["bill_no", "amount", "generated_at", "paid_at", "is_overdue"]
+        read_only_fields = ["bill_no", "amount", "generated_at", "paid_at", "is_overdue", "prepaid_balance"]
 
     def get_room_label(self, obj):
         return f"{obj.room.building.name}-{obj.room.room_no}"
+
+    def get_prepaid_balance(self, obj):
+        try:
+            return str(obj.room.prepaid_account.balance)
+        except PrepaidAccount.DoesNotExist:
+            return "0.00"
 
 
 class PaymentSerializer(serializers.ModelSerializer):
@@ -83,12 +91,14 @@ class PaymentSerializer(serializers.ModelSerializer):
             "fee_name",
             "period",
             "amount",
+            "prepaid_deduct",
+            "actual_paid",
             "method",
             "paid_at",
             "payer",
             "receipt_no",
         ]
-        read_only_fields = ["payment_no", "receipt_no", "paid_at"]
+        read_only_fields = ["payment_no", "receipt_no", "paid_at", "prepaid_deduct", "actual_paid"]
 
     def get_room_label(self, obj):
         return f"{obj.bill.room.building.name}-{obj.bill.room.room_no}"

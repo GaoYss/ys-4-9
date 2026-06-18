@@ -7,6 +7,11 @@
       </div>
       <DataTable :columns="columns" :rows="payments" @click="noop">
         <template #cell-amount="{ row }">¥{{ Number(row.amount).toFixed(2) }}</template>
+        <template #cell-prepaid_deduct="{ row }">
+          <span v-if="Number(row.prepaid_deduct) > 0" class="txn-out">-¥{{ Number(row.prepaid_deduct).toFixed(2) }}</span>
+          <span v-else>-</span>
+        </template>
+        <template #cell-actual_paid="{ row }">¥{{ Number(row.actual_paid).toFixed(2) }}</template>
         <template #actions="{ row }">
           <button @click="selected = row">预览</button>
         </template>
@@ -23,7 +28,15 @@
           <div><dt>房屋</dt><dd>{{ selected.room_label }}</dd></div>
           <div><dt>业主</dt><dd>{{ selected.owner_name }}</dd></div>
           <div><dt>费用</dt><dd>{{ selected.period }} {{ selected.fee_name }}</dd></div>
-          <div><dt>金额</dt><dd>¥{{ Number(selected.amount).toFixed(2) }}</dd></div>
+          <div><dt>应收金额</dt><dd>¥{{ Number(selected.amount).toFixed(2) }}</dd></div>
+          <div v-if="Number(selected.prepaid_deduct) > 0">
+            <dt>预存款抵扣</dt>
+            <dd class="txn-out">-¥{{ Number(selected.prepaid_deduct).toFixed(2) }}</dd>
+          </div>
+          <div class="receipt-total">
+            <dt>实付金额</dt>
+            <dd>¥{{ Number(selected.actual_paid).toFixed(2) }}</dd>
+          </div>
           <div><dt>支付方式</dt><dd>{{ selected.method }}</dd></div>
           <div><dt>支付时间</dt><dd>{{ selected.paid_at }}</dd></div>
         </dl>
@@ -49,7 +62,9 @@ const columns = [
   { key: "room_label", label: "房屋" },
   { key: "owner_name", label: "业主" },
   { key: "fee_name", label: "费用" },
-  { key: "amount", label: "金额" },
+  { key: "amount", label: "应收金额" },
+  { key: "prepaid_deduct", label: "预存款抵扣" },
+  { key: "actual_paid", label: "实付金额" },
   { key: "paid_at", label: "支付时间" }
 ];
 

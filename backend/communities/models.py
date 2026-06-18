@@ -128,7 +128,9 @@ class Payment(models.Model):
 
     payment_no = models.CharField("支付流水号", max_length=40, unique=True)
     bill = models.OneToOneField(Bill, related_name="payment", on_delete=models.PROTECT)
-    amount = models.DecimalField("实收金额", max_digits=10, decimal_places=2)
+    amount = models.DecimalField("应收金额", max_digits=10, decimal_places=2)
+    prepaid_deduct = models.DecimalField("预存款抵扣", max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    actual_paid = models.DecimalField("实付金额", max_digits=10, decimal_places=2, default=Decimal("0.00"))
     method = models.CharField("支付方式", max_length=20, choices=METHOD_CHOICES, default=WECHAT)
     paid_at = models.DateTimeField("支付时间", default=timezone.now)
     payer = models.CharField("付款人", max_length=50, blank=True)
