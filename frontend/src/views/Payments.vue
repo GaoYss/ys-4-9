@@ -72,12 +72,12 @@
             </div>
             <div class="pay-row deduction-row" v-if="payDialog.use_prepaid && Number(payDialog.bill.prepaid_balance) > 0">
               <span>预存款抵扣</span>
-              <strong class="txn-out">-¥{{ Number(estimatedDeduct).toFixed(2) }}</strong>
+              <strong class="txn-out">-¥{{ payDialog.deduct }}</strong>
             </div>
             <hr />
             <div class="pay-row total-row">
               <span>还需支付</span>
-              <strong class="final-amount">¥{{ Number(estimatedActualPaid).toFixed(2) }}</strong>
+              <strong class="final-amount">¥{{ payDialog.actual_paid }}</strong>
             </div>
             <div class="pay-row">
               <span>支付方式</span>
@@ -140,7 +140,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import { propertyApi } from "../api/property";
 import DataTable from "../components/DataTable.vue";
 import StatusBadge from "../components/StatusBadge.vue";
@@ -178,7 +178,9 @@ const payDialog = reactive({
   use_prepaid: true,
   method: "wechat",
   loading: false,
-  errorMsg: ""
+  errorMsg: "",
+  deduct: "0.00",
+  actual_paid: "0.00"
 });
 
 const successDialog = reactive({
@@ -186,18 +188,19 @@ const successDialog = reactive({
   result: {}
 });
 
-const estimatedDeduct = computed(() => {
-  if (!payDialog.use_prepaid || !payDialog.bill) return "0.00";
+function recalcPayDialog() {
   const balance = Number(payDialog.bill.prepaid_balance || 0);
   const amount = Number(payDialog.bill.amount || 0);
-  return Math.min(balance, amount).toFixed(2);
-});
+  const deduct = payDialog.use_prepaid ? Math.min(balance, amount) : 0;
+  payDialog.deduct = deduct.toFixed(2);
+  payDialog.actual_paid = (amount - deduct).toFixed(2);
+}
 
-const estimatedActualPaid = computed(() => {
-  const amount = Number(payDialog.bill.amount || 0);
-  const deduct = Number(estimatedDeduct.value);
-  return (amount - deduct).toFixed(2);
-});
+watch(
+  () => [payDialog.use_prepaid, payDialog.bill.prepaid_balance, payDialog.bill.amount],
+  recalcPayDialog,
+  { immediate: true }
+);
 
 async function load() {
   [bills.value, payments.value] = await Promise.all([propertyApi.listBills(), propertyApi.listPayments()]);

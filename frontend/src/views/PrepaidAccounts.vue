@@ -82,12 +82,23 @@ async function load() {
 }
 
 async function recharge() {
-  await propertyApi.rechargePrepaid(rechargeForm.account_id, {
-    amount: rechargeForm.amount,
+  const accountId = rechargeForm.account_id;
+  const amount = rechargeForm.amount;
+  const result = await propertyApi.rechargePrepaid(accountId, {
+    amount: amount,
     remark: rechargeForm.remark
   });
   Object.assign(rechargeForm, { account_id: "", amount: 0, remark: "" });
-  await load();
+  const idx = accounts.value.findIndex((a) => String(a.id) === String(accountId));
+  if (idx !== -1 && result.account) {
+    accounts.value.splice(idx, 1, result.account);
+  } else if (result.account) {
+    accounts.value.unshift(result.account);
+  }
+  if (result.transaction) {
+    transactions.value.unshift(result.transaction);
+  }
+  void load();
 }
 
 onMounted(load);
