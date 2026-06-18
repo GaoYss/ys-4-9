@@ -13,8 +13,18 @@
         </label>
         <label>充值金额<input v-model.number="rechargeForm.amount" type="number" min="0.01" step="0.01" required /></label>
         <label>备注<input v-model="rechargeForm.remark" placeholder="可选" /></label>
-        <button type="submit">确认充值</button>
+        <button type="submit" :disabled="submitting">
+          {{ submitting ? '提交中...' : '确认充值' }}
+        </button>
       </form>
+      <div v-if="errorMsg" class="error-box form-error-box">
+        <span class="error-icon">!</span>
+        <div class="error-content">
+          <div class="error-title">充值失败</div>
+          <div class="error-msg">{{ errorMsg }}</div>
+        </div>
+        <button class="error-close" @click="errorMsg = ''">×</button>
+      </div>
     </section>
 
     <section class="panel">
@@ -54,6 +64,8 @@ import DataTable from "../components/DataTable.vue";
 const accounts = ref([]);
 const transactions = ref([]);
 const rechargeForm = reactive({ account_id: "", amount: 0, remark: "" });
+const submitting = ref(false);
+const errorMsg = ref("");
 
 const accountColumns = [
   { key: "room_label", label: "房屋" },
@@ -82,23 +94,31 @@ async function load() {
 }
 
 async function recharge() {
+  submitting.value = true;
+  errorMsg.value = "";
   const accountId = rechargeForm.account_id;
   const amount = rechargeForm.amount;
-  const result = await propertyApi.rechargePrepaid(accountId, {
-    amount: amount,
-    remark: rechargeForm.remark
-  });
-  Object.assign(rechargeForm, { account_id: "", amount: 0, remark: "" });
-  const idx = accounts.value.findIndex((a) => String(a.id) === String(accountId));
-  if (idx !== -1 && result.account) {
-    accounts.value.splice(idx, 1, result.account);
-  } else if (result.account) {
-    accounts.value.unshift(result.account);
+  try {
+    const result = await propertyApi.rechargePrepaid(accountId, {
+      amount: amount,
+      remark: rechargeForm.remark
+    });
+    Object.assign(rechargeForm, { account_id: "", amount: 0, remark: "" });
+    const idx = accounts.value.findIndex((a) => String(a.id) === String(accountId));
+    if (idx !== -1 && result.account) {
+      accounts.value.splice(idx, 1, result.account);
+    } else if (result.account) {
+      accounts.value.unshift(result.account);
+    }
+    if (result.transaction) {
+      transactions.value.unshift(result.transaction);
+    }
+    void load();
+  } catch (err) {
+    errorMsg.value = (err && err.response && err.response.data && err.response.data.detail) || err.message || "充值失败，请重试";
+  } finally {
+    submitting.value = false;
   }
-  if (result.transaction) {
-    transactions.value.unshift(result.transaction);
-  }
-  void load();
 }
 
 onMounted(load);

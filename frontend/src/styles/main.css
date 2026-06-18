@@ -606,6 +606,10 @@ button:disabled:hover {
   font-weight: 500;
 }
 
+.form-error-box {
+  margin: 16px 0 0;
+}
+
 @media (max-width: 920px) {
   .app-shell {
     grid-template-columns: 1fr;

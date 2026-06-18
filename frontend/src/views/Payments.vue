@@ -222,8 +222,9 @@ function closePayDialog() {
 async function confirmPay() {
   payDialog.loading = true;
   payDialog.errorMsg = "";
+  const billId = payDialog.bill.id;
   try {
-    const result = await propertyApi.payBill(payDialog.bill.id, {
+    const result = await propertyApi.payBill(billId, {
       method: payDialog.method,
       payer: payDialog.bill.owner_name,
       use_prepaid: payDialog.use_prepaid
@@ -231,7 +232,14 @@ async function confirmPay() {
     payDialog.visible = false;
     successDialog.result = result;
     successDialog.visible = true;
-    await load();
+    const billIdx = bills.value.findIndex((b) => String(b.id) === String(billId));
+    if (billIdx !== -1) {
+      bills.value.splice(billIdx, 1);
+    }
+    if (result) {
+      payments.value.unshift(result);
+    }
+    void load();
   } catch (err) {
     payDialog.errorMsg = (err && err.response && err.response.data && err.response.data.detail) || err.message || "缴费失败，请重试";
   } finally {
