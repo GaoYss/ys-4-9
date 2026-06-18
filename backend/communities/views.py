@@ -1,20 +1,24 @@
+from decimal import Decimal, InvalidOperation
+
 from django.db.models import Count
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
 
-from .models import Bill, Building, FeeType, Payment, Reminder, Room
+from .models import Bill, Building, FeeType, Payment, PrepaidAccount, PrepaidTransaction, Reminder, Room
 from .serializers import (
     BillSerializer,
     BuildingDetailSerializer,
     BuildingSerializer,
     FeeTypeSerializer,
     PaymentSerializer,
+    PrepaidAccountSerializer,
+    PrepaidTransactionSerializer,
     ReminderSerializer,
     RoomSerializer,
 )
-from .services import create_overdue_reminders, dashboard_stats, generate_bills, pay_bill
+from .services import create_overdue_reminders, dashboard_stats, generate_bills, pay_bill, recharge_prepaid
 
 
 class BuildingViewSet(viewsets.ModelViewSet):
@@ -81,10 +85,17 @@ class BillViewSet(viewsets.ModelViewSet):
     def pay(self, request, pk=None):
         bill = self.get_object()
         try:
-            payment = pay_bill(bill, request.data.get("method", Payment.WECHAT), request.data.get("payer", ""))
+            payment, prepaid_deduct = pay_bill(
+                bill,
+                request.data.get("method", Payment.WECHAT),
+                request.data.get("payer", ""),
+                request.data.get("use_prepaid", True),
+            )
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response(PaymentSerializer(payment).data, status=status.HTTP_201_CREATED)
+        data = PaymentSerializer(payment).data
+        data["prepaid_deduct"] = str(prepaid_deduct)
+        return Response(data, status=status.HTTP_201_CREATED)
 
 
 class PaymentViewSet(viewsets.ModelViewSet):
@@ -94,10 +105,17 @@ class PaymentViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         bill = get_object_or_404(Bill.objects.select_related("room"), pk=request.data.get("bill"))
         try:
-            payment = pay_bill(bill, request.data.get("method", Payment.WECHAT), request.data.get("payer", ""))
+            payment, prepaid_deduct = pay_bill(
+                bill,
+                request.data.get("method", Payment.WECHAT),
+                request.data.get("payer", ""),
+                request.data.get("use_prepaid", True),
+            )
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response(self.get_serializer(payment).data, status=status.HTTP_201_CREATED)
+        data = self.get_serializer(payment).data
+        data["prepaid_deduct"] = str(prepaid_deduct)
+        return Response(data, status=status.HTTP_201_CREATED)
 
 
 class ReminderViewSet(viewsets.ModelViewSet):
@@ -111,6 +129,42 @@ class ReminderViewSet(viewsets.ModelViewSet):
             {"created_count": len(reminders), "created": ReminderSerializer(reminders, many=True).data},
             status=status.HTTP_201_CREATED,
         )
+
+
+class PrepaidAccountViewSet(viewsets.ModelViewSet):
+    queryset = PrepaidAccount.objects.select_related("room", "room__building").all()
+    serializer_class = PrepaidAccountSerializer
+
+    @action(detail=True, methods=["post"])
+    def recharge(self, request, pk=None):
+        account = self.get_object()
+        amount = request.data.get("amount")
+        remark = request.data.get("remark", "")
+        if amount is None:
+            return Response({"detail": "amount 为必填项"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            amount = Decimal(str(amount))
+            account, txn = recharge_prepaid(account.room_id, amount, remark)
+        except (ValueError, InvalidOperation) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {
+                "account": PrepaidAccountSerializer(account).data,
+                "transaction": PrepaidTransactionSerializer(txn).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=True, methods=["get"])
+    def transactions(self, request, pk=None):
+        account = self.get_object()
+        txns = account.transactions.select_related("bill").all()
+        return Response(PrepaidTransactionSerializer(txns, many=True).data)
+
+
+class PrepaidTransactionViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = PrepaidTransaction.objects.select_related("account", "account__room", "account__room__building", "bill").all()
+    serializer_class = PrepaidTransactionSerializer
 
 
 @api_view(["GET"])

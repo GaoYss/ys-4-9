@@ -20,6 +20,10 @@
       </div>
       <DataTable :columns="paymentColumns" :rows="payments">
         <template #cell-amount="{ row }">¥{{ Number(row.amount).toFixed(2) }}</template>
+        <template #cell-prepaid_deduct="{ row }">
+          <span v-if="Number(row.prepaid_deduct) > 0" class="txn-out">-¥{{ Number(row.prepaid_deduct).toFixed(2) }}</span>
+          <span v-else>-</span>
+        </template>
       </DataTable>
     </section>
   </div>
@@ -48,6 +52,7 @@ const paymentColumns = [
   { key: "room_label", label: "房屋" },
   { key: "owner_name", label: "付款人" },
   { key: "amount", label: "金额" },
+  { key: "prepaid_deduct", label: "预存款抵扣" },
   { key: "method", label: "方式" },
   { key: "paid_at", label: "支付时间" }
 ];
@@ -57,7 +62,7 @@ async function load() {
 }
 
 async function pay(row) {
-  await propertyApi.payBill(row.id, { method: "wechat", payer: row.owner_name });
+  await propertyApi.payBill(row.id, { method: "wechat", payer: row.owner_name, use_prepaid: true });
   await load();
 }
 

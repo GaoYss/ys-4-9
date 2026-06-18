@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Bill, Building, FeeType, Payment, Reminder, Room
+from .models import Bill, Building, FeeType, Payment, PrepaidAccount, PrepaidTransaction, Reminder, Room
 
 
 @admin.register(Building)
@@ -41,3 +41,16 @@ class ReminderAdmin(admin.ModelAdmin):
     list_display = ("reminder_no", "bill", "channel", "status", "sent_at")
     list_filter = ("channel", "status")
     search_fields = ("reminder_no", "bill__bill_no", "bill__room__owner_name")
+
+
+@admin.register(PrepaidAccount)
+class PrepaidAccountAdmin(admin.ModelAdmin):
+    list_display = ("room", "balance", "updated_at")
+    search_fields = ("room__room_no", "room__owner_name")
+
+
+@admin.register(PrepaidTransaction)
+class PrepaidTransactionAdmin(admin.ModelAdmin):
+    list_display = ("txn_no", "account", "amount", "balance_after", "txn_type", "created_at")
+    list_filter = ("txn_type",)
+    search_fields = ("txn_no",)

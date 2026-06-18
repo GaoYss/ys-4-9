@@ -4,7 +4,7 @@ from django.db import transaction
 from django.db.models import Count, Sum
 from django.utils import timezone
 
-from .models import Bill, Building, FeeType, Payment, Reminder, Room
+from .models import Bill, Building, FeeType, Payment, PrepaidAccount, PrepaidTransaction, Reminder, Room
 
 
 def make_number(prefix):
@@ -41,11 +41,31 @@ def generate_bills(fee_type_id, period, due_date, room_ids=None):
 
 
 @transaction.atomic
-def pay_bill(bill, method, payer=""):
+def pay_bill(bill, method, payer="", use_prepaid=True):
     if bill.status == Bill.PAID:
         raise ValueError("该账单已缴费")
     if bill.status == Bill.CANCELLED:
         raise ValueError("作废账单不能缴费")
+
+    prepaid_deduct = Decimal("0.00")
+    if use_prepaid:
+        try:
+            account = PrepaidAccount.objects.select_for_update().get(room=bill.room)
+            if account.balance > Decimal("0.00"):
+                prepaid_deduct = min(account.balance, bill.amount)
+                account.balance -= prepaid_deduct
+                account.save(update_fields=["balance"])
+                PrepaidTransaction.objects.create(
+                    txn_no=make_number("T"),
+                    account=account,
+                    amount=prepaid_deduct,
+                    balance_after=account.balance,
+                    txn_type=PrepaidTransaction.DEDUCT,
+                    bill=bill,
+                    remark=f"抵扣账单 {bill.bill_no}",
+                )
+        except PrepaidAccount.DoesNotExist:
+            pass
 
     payment = Payment.objects.create(
         payment_no=make_number("P"),
@@ -58,7 +78,7 @@ def pay_bill(bill, method, payer=""):
     bill.status = Bill.PAID
     bill.paid_at = payment.paid_at
     bill.save(update_fields=["status", "paid_at"])
-    return payment
+    return payment, prepaid_deduct
 
 
 @transaction.atomic
@@ -84,6 +104,27 @@ def create_overdue_reminders(channel=Reminder.SMS):
             )
         )
     return reminders
+
+
+@transaction.atomic
+def recharge_prepaid(room_id, amount, remark=""):
+    if amount <= Decimal("0.00"):
+        raise ValueError("充值金额必须大于0")
+    room = Room.objects.get(pk=room_id)
+    account, _ = PrepaidAccount.objects.select_for_update().get_or_create(
+        room=room, defaults={"balance": Decimal("0.00")}
+    )
+    account.balance += amount
+    account.save(update_fields=["balance"])
+    txn = PrepaidTransaction.objects.create(
+        txn_no=make_number("T"),
+        account=account,
+        amount=amount,
+        balance_after=account.balance,
+        txn_type=PrepaidTransaction.RECHARGE,
+        remark=remark,
+    )
+    return account, txn
 
 
 def dashboard_stats():

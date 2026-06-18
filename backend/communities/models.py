@@ -143,6 +143,45 @@ class Payment(models.Model):
         return self.payment_no
 
 
+class PrepaidAccount(models.Model):
+    room = models.OneToOneField(Room, related_name="prepaid_account", on_delete=models.CASCADE)
+    balance = models.DecimalField("账户余额", max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    updated_at = models.DateTimeField("更新时间", auto_now=True)
+
+    class Meta:
+        verbose_name = "预存款账户"
+        verbose_name_plural = "预存款账户"
+
+    def __str__(self):
+        return f"{self.room} 预存款"
+
+
+class PrepaidTransaction(models.Model):
+    RECHARGE = "recharge"
+    DEDUCT = "deduct"
+    TYPE_CHOICES = (
+        (RECHARGE, "充值"),
+        (DEDUCT, "抵扣"),
+    )
+
+    txn_no = models.CharField("流水号", max_length=40, unique=True)
+    account = models.ForeignKey(PrepaidAccount, related_name="transactions", on_delete=models.CASCADE)
+    amount = models.DecimalField("金额", max_digits=10, decimal_places=2)
+    balance_after = models.DecimalField("交易后余额", max_digits=10, decimal_places=2)
+    txn_type = models.CharField("交易类型", max_length=20, choices=TYPE_CHOICES)
+    bill = models.ForeignKey(Bill, related_name="prepaid_transactions", on_delete=models.SET_NULL, null=True, blank=True)
+    remark = models.CharField("备注", max_length=200, blank=True)
+    created_at = models.DateTimeField("交易时间", auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "预存款流水"
+        verbose_name_plural = "预存款流水"
+
+    def __str__(self):
+        return self.txn_no
+
+
 class Reminder(models.Model):
     SMS = "sms"
     PHONE = "phone"

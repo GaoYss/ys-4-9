@@ -36,6 +36,7 @@ const navItems = [
   { path: "/", label: "工作台", icon: "▦" },
   { path: "/buildings", label: "楼栋管理", icon: "⌂" },
   { path: "/fees", label: "费用生成", icon: "¥" },
+  { path: "/prepaid", label: "预存款", icon: "◈" },
   { path: "/payments", label: "在线缴费", icon: "✓" },
   { path: "/reminders", label: "欠费催缴", icon: "!" },
   { path: "/receipts", label: "票据打印", icon: "▣" }

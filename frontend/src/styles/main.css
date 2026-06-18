@@ -335,6 +335,16 @@ th {
   color: #8a97a3;
 }
 
+.txn-in {
+  color: #147050;
+  font-weight: 600;
+}
+
+.txn-out {
+  color: #b42318;
+  font-weight: 600;
+}
+
 @media (max-width: 920px) {
   .app-shell {
     grid-template-columns: 1fr;

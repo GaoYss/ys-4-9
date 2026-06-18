@@ -13,5 +13,9 @@ export const propertyApi = {
   payBill: (id, payload) => http.post(`/bills/${id}/pay/`, payload).then(unwrap),
   listPayments: () => http.get("/payments/").then(unwrap),
   listReminders: () => http.get("/reminders/").then(unwrap),
-  createOverdueReminders: (payload) => http.post("/reminders/create_overdue/", payload).then(unwrap)
+  createOverdueReminders: (payload) => http.post("/reminders/create_overdue/", payload).then(unwrap),
+  listPrepaidAccounts: () => http.get("/prepaid-accounts/").then(unwrap),
+  rechargePrepaid: (id, payload) => http.post(`/prepaid-accounts/${id}/recharge/`, payload).then(unwrap),
+  listPrepaidTransactions: (id) => http.get(`/prepaid-accounts/${id}/transactions/`).then(unwrap),
+  listAllPrepaidTransactions: () => http.get("/prepaid-transactions/").then(unwrap)
 };

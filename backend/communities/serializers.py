@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Bill, Building, FeeType, Payment, Reminder, Room
+from .models import Bill, Building, FeeType, Payment, PrepaidAccount, PrepaidTransaction, Reminder, Room
 
 
 class RoomSerializer(serializers.ModelSerializer):
@@ -123,3 +123,41 @@ class ReminderSerializer(serializers.ModelSerializer):
 
     def get_room_label(self, obj):
         return f"{obj.bill.room.building.name}-{obj.bill.room.room_no}"
+
+
+class PrepaidAccountSerializer(serializers.ModelSerializer):
+    room_label = serializers.SerializerMethodField()
+    owner_name = serializers.CharField(source="room.owner_name", read_only=True)
+
+    class Meta:
+        model = PrepaidAccount
+        fields = ["id", "room", "room_label", "owner_name", "balance", "updated_at"]
+        read_only_fields = ["balance", "updated_at"]
+
+    def get_room_label(self, obj):
+        return f"{obj.room.building.name}-{obj.room.room_no}"
+
+
+class PrepaidTransactionSerializer(serializers.ModelSerializer):
+    room_label = serializers.SerializerMethodField()
+    owner_name = serializers.CharField(source="account.room.owner_name", read_only=True)
+    bill_no = serializers.CharField(source="bill.bill_no", default=None, read_only=True)
+
+    class Meta:
+        model = PrepaidTransaction
+        fields = [
+            "id",
+            "txn_no",
+            "room_label",
+            "owner_name",
+            "amount",
+            "balance_after",
+            "txn_type",
+            "bill_no",
+            "remark",
+            "created_at",
+        ]
+        read_only_fields = ["txn_no", "balance_after", "created_at"]
+
+    def get_room_label(self, obj):
+        return f"{obj.account.room.building.name}-{obj.account.room.room_no}"
