@@ -3,7 +3,7 @@
     <section class="stats-grid">
       <StatCard label="楼栋/房屋" :value="`${stats.building_count || 0} / ${stats.room_count || 0}`" />
       <StatCard label="应收金额" :value="money(stats.receivable_total)" />
-      <StatCard label="实收金额" :value="money(stats.paid_total)" />
+      <StatCard label="实收金额" :value="money(stats.paid_total)" :hint="stats.prepaid_deduct_total > 0 ? `预存抵扣 ¥${Number(stats.prepaid_deduct_total).toFixed(2)}` : ''" />
       <StatCard label="欠费金额" :value="money(stats.unpaid_total)" />
     </section>
 

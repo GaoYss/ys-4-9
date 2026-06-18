@@ -135,7 +135,8 @@ def dashboard_stats():
     Bill.objects.filter(status=Bill.UNPAID, due_date__lt=today).update(status=Bill.OVERDUE)
 
     bills = Bill.objects.all()
-    paid_total = Payment.objects.aggregate(total=Sum("amount"))["total"] or Decimal("0.00")
+    paid_total = Payment.objects.aggregate(total=Sum("actual_paid"))["total"] or Decimal("0.00")
+    prepaid_deduct_total = Payment.objects.aggregate(total=Sum("prepaid_deduct"))["total"] or Decimal("0.00")
     receivable_total = bills.exclude(status=Bill.CANCELLED).aggregate(total=Sum("amount"))["total"] or Decimal("0.00")
     unpaid_total = bills.filter(status__in=[Bill.UNPAID, Bill.OVERDUE]).aggregate(total=Sum("amount"))["total"] or Decimal("0.00")
 
@@ -147,6 +148,7 @@ def dashboard_stats():
         "room_count": Room.objects.count(),
         "bill_count": bills.count(),
         "paid_total": paid_total,
+        "prepaid_deduct_total": prepaid_deduct_total,
         "receivable_total": receivable_total,
         "unpaid_total": unpaid_total,
         "overdue_count": bills.filter(status=Bill.OVERDUE).count(),

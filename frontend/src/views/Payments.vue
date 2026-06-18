@@ -90,6 +90,14 @@
             </div>
           </div>
         </div>
+        <div v-if="payDialog.errorMsg" class="error-box">
+          <span class="error-icon">!</span>
+          <div class="error-content">
+            <div class="error-title">缴费失败</div>
+            <div class="error-msg">{{ payDialog.errorMsg }}</div>
+          </div>
+          <button class="error-close" @click="payDialog.errorMsg = ''">×</button>
+        </div>
         <div class="modal-foot">
           <button class="secondary-btn" @click="closePayDialog">取消</button>
           <button @click="confirmPay" :disabled="payDialog.loading">
@@ -169,7 +177,8 @@ const payDialog = reactive({
   bill: {},
   use_prepaid: true,
   method: "wechat",
-  loading: false
+  loading: false,
+  errorMsg: ""
 });
 
 const successDialog = reactive({
@@ -199,6 +208,7 @@ function openPayDialog(row) {
   payDialog.use_prepaid = Number(row.prepaid_balance) > 0;
   payDialog.method = "wechat";
   payDialog.loading = false;
+  payDialog.errorMsg = "";
   payDialog.visible = true;
 }
 
@@ -208,6 +218,7 @@ function closePayDialog() {
 
 async function confirmPay() {
   payDialog.loading = true;
+  payDialog.errorMsg = "";
   try {
     const result = await propertyApi.payBill(payDialog.bill.id, {
       method: payDialog.method,
@@ -218,6 +229,8 @@ async function confirmPay() {
     successDialog.result = result;
     successDialog.visible = true;
     await load();
+  } catch (err) {
+    payDialog.errorMsg = (err && err.response && err.response.data && err.response.data.detail) || err.message || "缴费失败，请重试";
   } finally {
     payDialog.loading = false;
   }
